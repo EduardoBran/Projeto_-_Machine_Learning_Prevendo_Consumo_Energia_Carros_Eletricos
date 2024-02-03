@@ -22,6 +22,8 @@ library(e1071)          # carrega algoritimo de ML (SVM)
 
 library(caret)          # cria confusion matrix
 
+library(h2o)            # framework para construir modelos de machine learning
+
 
 
 #  -> Seu trabalho é construir um modelo de Machine Learning capaz de prever o consumo de energia de veículos elétricos.
@@ -125,7 +127,8 @@ dados <- dados[complete.cases(dados), ]
 
 
 # - Modifica todas as variáveis chr para factor
-# - Cria duas novas variáveis
+# - Modifica as variáveis numéricas Number.of.seats e Number.of.doors em factor
+# - Cria duas novas variáveis de relação
 # - Utiliza Feature Selection
 # - Cria 1 Tipo de Modelo (RandomForest)
 
@@ -134,9 +137,10 @@ dados <- dados[complete.cases(dados), ]
 
 # Convertendo a variável variáveis chr para fator
 dados <- dados %>%  
-  mutate_if(is.character, factor)
+  mutate_if(is.character, factor) %>%
+  mutate(across(c(Number.of.seats, Number.of.doors), as.factor))
 
-# Criando novas variáveis
+# Criando novas variáveis de relação
 dados$Weight.Power.Ratio <- dados$Minimal.empty.weight..kg. / dados$Engine.power..KM.  # Relação entre Peso e Potência do Motor
 dados$Battery.Range.Ratio <- dados$Battery.capacity..kWh. / dados$Range..WLTP...km.    # Relação entre Capacidade da Bateria e Alcance
 
@@ -213,6 +217,7 @@ rm(rsquared)
 
 
 
+
 #### Versão 3
 
 ## Carregando dados
@@ -221,8 +226,9 @@ dados <- dados[complete.cases(dados), ]
 
 
 # - Modifica todas as variáveis chr para factor
-# - Aplica Normalização nas variásveis do tipo int
-# - Cria novas novas variáveis do tipo factor a partir de variáveis int
+# - Modifica as variáveis numéricas Number.of.seats e Number.of.doors em factor
+# - Cria duas novas variáveis de relação
+# - Aplica Normalização nas variáveis do tipo int
 # - Utiliza Feature Selection
 # - Cria 1 Tipo de Modelo (RandomForest)
 
@@ -230,65 +236,22 @@ dados <- dados[complete.cases(dados), ]
 
 # Convertendo a variável variáveis chr para fator
 dados <- dados %>%  
-  mutate_if(is.character, factor)
+  mutate_if(is.character, factor) %>%
+  mutate(across(c(Number.of.seats, Number.of.doors), as.factor))
 
-dados <- dados %>% 
-  select(-Number.of.seats, -Number.of.doors)
-
-# Normalização dos Dados (Menos as Variáveis Number.of.seats e Number.of.doors)
-# dados_nor <- dados %>%
-#   mutate_if(sapply(dados, is.numeric), scale)
-
-# Identificar colunas numéricas e fator
+# Normalização dos Dados (variáveis numéricas) (Exemplo 1 coluna ao final)
 numeric_columns <- sapply(dados, is.numeric)
-factor_columns <- sapply(dados, is.factor)
+dados_nor <- dados %>%
+  mutate(across(where(is.numeric), ~ scale(., center = min(.), scale = max(.) - min(.))))
+rm(numeric_columns)
 
-# Se houver colunas numéricas, calcular os máximos e mínimos
-if (any(numeric_columns)) {
-  maxs <- apply(dados[, numeric_columns], 2, max)
-  mins <- apply(dados[, numeric_columns], 2, min)
-  
-  # Normalizando apenas colunas numéricas
-  dados_normalizados <- as.data.frame(scale(dados[, numeric_columns], center = mins, scale = maxs - mins))
-  
-  # Adicionar de volta as colunas do tipo factor
-  dados_normalizados <- cbind(dados[, factor_columns], dados_normalizados)
-} else {
-  print("Não há colunas numéricas no conjunto de dados.")
-}
+# Reverter Normalização
+# dados_revertidos <- dados_nor %>%
+#   mutate(across(where(is.numeric), ~ (. * (max(dados[, cur_column()]) - min(dados[, cur_column()])) + min(dados[, cur_column()]))))
 
-head(dados,)
-head(dados_normalizados, 2)
-
-
-
-# Revertendo a normalização
-names(dados)
-dados_1col <- dados %>% 
-  select(Engine.power..KM.)
-
-
-# APLICAR A NORMALIZAÇÃO EM UMA ÚNICA VARIÁVEL E TENTAR REVERTER
-
-max_coluna <- max(dados_1col)
-min_coluna <- min(dados_1col)
-dados_1col_nor <- as.data.frame(scale(dados_1col, center = min_coluna, scale = max_coluna - min_coluna))
-
-# Reverter a normalização para a coluna
-dados_1col_normalizado <- dados_1col_nor * (max_coluna - min_coluna) + min_coluna
-
-head(dados_1col,2)
-head(dados_1col_nor,2)
-head(dados_1col_normalizado,2)
-
-# Criando novas variáveis (Categóricas)
-
-
-# TRANSFORMAR VARIAVEL QUANTIDADE DE PORTAS E QUANTIDADE DE OUTRA COISA E OUTRAS VARIAVEIS NUMERICAS EM FACTOR
-
-
-
-
+# Criando novas variáveis de relação
+dados_nor$Weight.Power.Ratio <- dados$Minimal.empty.weight..kg. / dados$Engine.power..KM.  # Relação entre Peso e Potência do Motor
+dados_nor$Battery.Range.Ratio <- dados$Battery.capacity..kWh. / dados$Range..WLTP...km.    # Relação entre Capacidade da Bateria e Alcance
 
 
 ## Seleção de Variáveis (Feature Selection)
@@ -321,15 +284,14 @@ rm(df_importancia)
 
 # Dividindo os dados em treino e teste
 set.seed(150)
-indices <- createDataPartition(dados$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
-dados_treino <- dados[indices, ]
-dados_teste <- dados[-indices, ]
+indices <- createDataPartition(dados_nor$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
+dados_treino <- dados_nor[indices, ]
+dados_teste <- dados_nor[-indices, ]
 rm(indices)
 
 # Criando o modelo preditivo (RandomForest)
-modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ 
-                         Wheelbase..cm. + Minimal.price..gross...PLN. + Battery.Range.Ratio + Make + Permissable.gross.weight..kg. + 
-                         Length..cm. + Maximum.torque..Nm. + Minimal.empty.weight..kg.,
+modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ Make + Wheelbase..cm.
+                       + Permissable.gross.weight..kg. + Minimal.price..gross...PLN. + Length..cm. + Width..cm.,
                        data = dados_treino, 
                        ntree = 100, nodesize = 10, importance = TRUE, set.seed(100))
 
@@ -347,58 +309,443 @@ rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.
 cat("R-squared:", rsquared, "\n")
 
 # Modelo 1
-# RMSE (Root Mean Squared Error): 0.6272197 
-# MAE (Mean Absolute Error)     : 0.5990649 
-# R-squared                     : 0.9730092
+# RMSE (Root Mean Squared Error): 0.03809704
+# MAE (Mean Absolute Error)     : 0.03421335
+# R-squared                     : 0.9792081
+
+rm(modelo)
+rm(previsoes)
+rm(rmse)
+rm(mae)
+rm(rsquared)
 
 
 
 
-
-
-
-
-
-#### Melhorias
-
-# Retirar variável Car Full Name
-# Transformar todas as variáveis chr em fac
-
-# Realizar Normalização nas variáveis Numéricas
-# Criar novas variáveis que serão transformadas de variáveis numéricas para variáveis categórias
-
-# Realizar novas análises de Seleção de Variáveis
-# Testar outros modelos
-# Utilizar AutoML
-names(dados)
-
+#### Versão 4
 
 ## Carregando dados
 dados <- data.frame(read_xlsx("dataset/FEV-data-Excel.xlsx"))
+dados <- dados[complete.cases(dados), ]
 
 
-# Convertendo a variável variáveis chr para fator e removendo variável nome dos carros
+# - Modifica todas as variáveis chr para factor
+# - Modifica as variáveis numéricas Number.of.seats e Number.of.doors em factor
+# - Cria novas variáveis categóricas a partir de varíaveis do tipo int
+# - Cria duas novas variáveis de relação
+# - Aplica Normalização nas variáveis do tipo int
+# - Utiliza Feature Selection
+# - Cria 1 Tipo de Modelo (RandomForest)
+
+
+## Engenharia de Atributos
+
+# Convertendo a variável variáveis chr para fator
 dados <- dados %>%  
-  mutate_if(is.character, factor) %>% 
+  mutate_if(is.character, factor) %>%
+  mutate(across(c(Number.of.seats, Number.of.doors), as.factor))
+
+# Cria novas variáveis categóricas a partir de varíaveis do tipo int
+colunas_numericas <- sapply(dados, is.numeric)                          # Lista de colunas que são numéricas
+
+# Função para criar variáveis fatoriais com 5 níveis
+criar_variaveis_fatoriais <- function(coluna_numerica) {
+  # Calcula os limites dos intervalos
+  limite_inferior <- min(coluna_numerica)
+  limite_superior <- max(coluna_numerica)
+  
+  # Calcula o tamanho do intervalo
+  tamanho_intervalo <- (limite_superior - limite_inferior) / 3
+  
+  # Ajusta o limite inferior para evitar valores exatamente iguais
+  limite_inferior <- limite_inferior - 0.001
+  
+  # Cria os rótulos dos níveis
+  rotulos <- paste0(round(seq(limite_inferior, limite_superior, by = tamanho_intervalo), 2),
+                    " a ",
+                    round(seq(limite_inferior + tamanho_intervalo, limite_superior + tamanho_intervalo, by = tamanho_intervalo), 2))
+  
+  # Cria a variável fatorial com os rótulos, sem valores NA
+  variavel_fatorial <- cut(coluna_numerica, breaks = seq(limite_inferior, limite_superior + tamanho_intervalo, by = tamanho_intervalo), labels = rotulos, na.omit = FALSE)
+  
+  return(variavel_fatorial)
+}
+
+# Aplica a função para criar variáveis fatoriais em cada coluna numérica
+novas_variaveis_fatoriais <- lapply(dados[, colunas_numericas], criar_variaveis_fatoriais)
+
+# Adiciona um sufixo aos nomes das novas variáveis
+nomes_novas_variaveis <- paste0(names(dados[, colunas_numericas]), "_categoria")
+names(novas_variaveis_fatoriais) <- nomes_novas_variaveis
+
+# Combina as novas variáveis fatoriais ao conjunto de dados original
+dados <- cbind(dados, novas_variaveis_fatoriais)
+str(dados)
+rm(criar_variaveis_fatoriais)
+rm(novas_variaveis_fatoriais)
+rm(nomes_novas_variaveis)
+rm(colunas_numericas)
+
+# Normalização dos Dados (variáveis numéricas) (Exemplo 1 coluna ao final)
+numeric_columns <- sapply(dados, is.numeric)
+dados_nor <- dados %>%
+  mutate(across(where(is.numeric), ~ scale(., center = min(.), scale = max(.) - min(.))))
+rm(numeric_columns)
+
+# Reverter Normalização
+# dados_revertidos <- dados_nor %>%
+#   mutate(across(where(is.numeric), ~ (. * (max(dados[, cur_column()]) - min(dados[, cur_column()])) + min(dados[, cur_column()]))))
+
+# Criando novas variáveis de relação
+dados_nor$Weight.Power.Ratio <- dados$Minimal.empty.weight..kg. / dados$Engine.power..KM.  # Relação entre Peso e Potência do Motor
+dados_nor$Battery.Range.Ratio <- dados$Battery.capacity..kWh. / dados$Range..WLTP...km.    # Relação entre Capacidade da Bateria e Alcance
+
+
+## Seleção de Variáveis (Feature Selection)
+modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ ., 
+                       data = dados_nor, 
+                       ntree = 100, nodesize = 10, importance = T, set.seed(100))
+
+# Visualizando por números
+print(modelo$importance)
+
+# Visualizando por Gráficos
+varImpPlot(modelo)
+
+importancia_ordenada <- modelo$importance[order(-modelo$importance[, 1]), , drop = FALSE] 
+df_importancia <- data.frame(
+  Variavel = rownames(importancia_ordenada),
+  Importancia = importancia_ordenada[, 1]
+)
+ggplot(df_importancia, aes(x = reorder(Variavel, -Importancia), y = Importancia)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Importância das Variáveis", x = "Variável", y = "Importância") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10))
+
+rm(modelo)
+rm(importancia_ordenada)
+rm(df_importancia)
+
+
+
+## Criando Modelo
+
+# Dividindo os dados em treino e teste
+set.seed(150)
+indices <- createDataPartition(dados_nor$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
+dados_treino <- dados_nor[indices, ]
+dados_teste <- dados_nor[-indices, ]
+rm(indices)
+
+# Criando o modelo preditivo (RandomForest)
+modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ Make + Wheelbase..cm.
+                       + Permissable.gross.weight..kg. + Minimal.price..gross...PLN. + Length..cm. + Width..cm.
+                       + Acceleration.0.100.kph..s._categoria,
+                       data = dados_treino, 
+                       ntree = 100, nodesize = 10, importance = TRUE, set.seed(100))
+
+# Realizando previsões no conjunto de teste
+previsoes <- predict(modelo, newdata = dados_teste)
+
+# Avaliando o desempenho do modelo
+rmse <- sqrt(mean((previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.)^2))
+cat("RMSE (Root Mean Squared Error):", rmse, "\n")
+
+mae <- mean(abs(previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.))
+cat("MAE (Mean Absolute Error):", mae, "\n")
+
+rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.)^2) / sum((dados_teste$mean...Energy.consumption..kWh.100.km. - mean(dados_teste$mean...Energy.consumption..kWh.100.km.))^2)
+cat("R-squared:", rsquared, "\n")
+
+# Modelo 1
+# RMSE (Root Mean Squared Error): 0.04515118
+# MAE (Mean Absolute Error)     : 0.0414877
+# R-squared                     : 0.9707955
+
+rm(modelo)
+rm(previsoes)
+rm(rmse)
+rm(mae)
+rm(rsquared)
+
+
+
+
+#### Versão 5
+
+## Carregando dados
+dados <- data.frame(read_xlsx("dataset/FEV-data-Excel.xlsx"))
+dados <- dados[complete.cases(dados), ]
+
+
+# - Utiliza as mesmas configurações da Versão 3
+# - Aplica Técnicas de Duplicação de Linhas
+
+
+## Engenharia de Atributos
+
+# Convertendo a variável variáveis chr para fator
+dados <- dados %>%  
+  mutate_if(is.character, factor) %>%
+  mutate(across(c(Number.of.seats, Number.of.doors), as.factor))
+
+# Normalização dos Dados (variáveis numéricas) (Exemplo 1 coluna ao final)
+numeric_columns <- sapply(dados, is.numeric)
+dados_nor <- dados %>%
+  mutate(across(where(is.numeric), ~ scale(., center = min(.), scale = max(.) - min(.))))
+rm(numeric_columns)
+
+# Reverter Normalização
+# dados_revertidos <- dados_nor %>%
+#   mutate(across(where(is.numeric), ~ (. * (max(dados[, cur_column()]) - min(dados[, cur_column()])) + min(dados[, cur_column()]))))
+
+# Criando novas variáveis de relação
+dados_nor$Weight.Power.Ratio <- dados$Minimal.empty.weight..kg. / dados$Engine.power..KM.  # Relação entre Peso e Potência do Motor
+dados_nor$Battery.Range.Ratio <- dados$Battery.capacity..kWh. / dados$Range..WLTP...km.    # Relação entre Capacidade da Bateria e Alcance
+
+
+## Seleção de Variáveis (Feature Selection)
+modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ ., 
+                       data = dados_nor, 
+                       ntree = 100, nodesize = 10, importance = T, set.seed(100))
+
+# Visualizando por números
+print(modelo$importance)
+
+# Visualizando por Gráficos
+varImpPlot(modelo)
+
+importancia_ordenada <- modelo$importance[order(-modelo$importance[, 1]), , drop = FALSE] 
+df_importancia <- data.frame(
+  Variavel = rownames(importancia_ordenada),
+  Importancia = importancia_ordenada[, 1]
+)
+ggplot(df_importancia, aes(x = reorder(Variavel, -Importancia), y = Importancia)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Importância das Variáveis", x = "Variável", y = "Importância") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10))
+
+rm(modelo)
+rm(importancia_ordenada)
+rm(df_importancia)
+
+
+## Criando Modelo
+
+# Dividindo os dados em treino e teste
+set.seed(150)
+indices <- createDataPartition(dados_nor$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
+dados_treino <- dados_nor[indices, ]
+dados_teste <- dados_nor[-indices, ]
+rm(indices)
+str(dados_treino)
+
+# Duplicação de Linhas (dados_treino)
+dados_treino <- dados_treino[rep(seq_len(nrow(dados_treino)), each = 2), ]
+
+# Para uma duplicação mais equilibrada, você pode ajustar o fator 'each' conforme necessário
+
+
+# Criando o modelo preditivo (RandomForest)
+modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ Make + Wheelbase..cm.
+                       + Permissable.gross.weight..kg. + Minimal.price..gross...PLN. + Length..cm. + Width..cm.,
+                       data = dados_treino, 
+                       ntree = 100, nodesize = 10, importance = TRUE, set.seed(100))
+
+# Realizando previsões no conjunto de teste
+previsoes <- predict(modelo, newdata = dados_teste)
+
+# Avaliando o desempenho do modelo
+rmse <- sqrt(mean((previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.)^2))
+cat("RMSE (Root Mean Squared Error):", rmse, "\n")
+
+mae <- mean(abs(previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.))
+cat("MAE (Mean Absolute Error):", mae, "\n")
+
+rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.)^2) / sum((dados_teste$mean...Energy.consumption..kWh.100.km. - mean(dados_teste$mean...Energy.consumption..kWh.100.km.))^2)
+cat("R-squared:", rsquared, "\n")
+
+# Modelo 1
+# RMSE (Root Mean Squared Error): 0.04066856
+# MAE (Mean Absolute Error)     : 0.03548824
+# R-squared                     : 0.9763065
+
+rm(modelo)
+rm(previsoes)
+rm(rmse)
+rm(mae)
+rm(rsquared)
+
+
+
+
+#### Versão 6 (AutoML)
+
+## Carregando dados
+dados <- data.frame(read_xlsx("dataset/FEV-data-Excel.xlsx"))
+dados <- dados[complete.cases(dados), ]
+
+
+# - Modifica todas as variáveis chr para factor
+# - Modifica as variáveis numéricas Number.of.seats e Number.of.doors em factor
+# - Cria novas variáveis categóricas a partir de varíaveis do tipo int
+# - Cria duas novas variáveis de relação
+# - Utilizando AutoML
+
+
+## Engenharia de Atributos
+
+# Convertendo a variável variáveis chr para fator
+dados <- dados %>%  
+  mutate_if(is.character, factor) %>%
+  mutate(across(c(Number.of.seats, Number.of.doors), as.factor)) %>% 
   select(-Car.full.name)
 
 
-# Realizar Normalização Dados Numéricos
+# Cria novas variáveis categóricas a partir de varíaveis do tipo int
+colunas_numericas <- sapply(dados, is.numeric)                          # Lista de colunas que são numéricas
+
+# Função para criar variáveis fatoriais com 5 níveis
+criar_variaveis_fatoriais <- function(coluna_numerica) {
+  # Calcula os limites dos intervalos
+  limite_inferior <- min(coluna_numerica)
+  limite_superior <- max(coluna_numerica)
+  
+  # Calcula o tamanho do intervalo
+  tamanho_intervalo <- (limite_superior - limite_inferior) / 3
+  
+  # Ajusta o limite inferior para evitar valores exatamente iguais
+  limite_inferior <- limite_inferior - 0.001
+  
+  # Cria os rótulos dos níveis
+  rotulos <- paste0(round(seq(limite_inferior, limite_superior, by = tamanho_intervalo), 2),
+                    " a ",
+                    round(seq(limite_inferior + tamanho_intervalo, limite_superior + tamanho_intervalo, by = tamanho_intervalo), 2))
+  
+  # Cria a variável fatorial com os rótulos, sem valores NA
+  variavel_fatorial <- cut(coluna_numerica, breaks = seq(limite_inferior, limite_superior + tamanho_intervalo, by = tamanho_intervalo), labels = rotulos, na.omit = FALSE)
+  
+  return(variavel_fatorial)
+}
+
+# Aplica a função para criar variáveis fatoriais em cada coluna numérica
+novas_variaveis_fatoriais <- lapply(dados[, colunas_numericas], criar_variaveis_fatoriais)
+
+# Adiciona um sufixo aos nomes das novas variáveis
+nomes_novas_variaveis <- paste0(names(dados[, colunas_numericas]), "_categoria")
+names(novas_variaveis_fatoriais) <- nomes_novas_variaveis
+
+# Combina as novas variáveis fatoriais ao conjunto de dados original
+dados <- cbind(dados, novas_variaveis_fatoriais)
+str(dados)
+rm(criar_variaveis_fatoriais)
+rm(novas_variaveis_fatoriais)
+rm(nomes_novas_variaveis)
+rm(colunas_numericas)
 
 
-# Remover Normalização
+## Automl
+
+# Inicializando o H2O (Framework de Machine Learning)
+h2o.init()
+
+# O H2O requer que os dados estejam no formato de dataframe do H2O
+h2o_frame <- as.h2o(dados)
+class(h2o_frame)
+
+# Split dos dados em treino e teste (cria duas listas)
+h2o_frame_split <- h2o.splitFrame(h2o_frame, ratios = 0.85)
+head(h2o_frame_split)
+
+modelo_automl <- h2o.automl(y = 'mean...Energy.consumption..kWh.100.km.',
+                            training_frame = h2o_frame_split[[1]],
+                            nfolds = 5,
+                            leaderboard_frame = h2o_frame_split[[2]],
+                            max_runtime_secs = 60 * 15,
+                            sort_metric = "mae")
+
+modelo_automl2 <- h2o.automl(y = 'mean...Energy.consumption..kWh.100.km.',
+                            training_frame = h2o_frame_split[[1]],
+                            nfolds = 5,
+                            leaderboard_frame = h2o_frame_split[[2]],
+                            max_runtime_secs = 60 * 60,
+                            sort_metric = "mae")
 
 
-# Verificando e removendo valores ausentes
-colSums(is.na(dados))
-dados <- dados[complete.cases(dados), ]
-
-# Criando novas variáveis
-dados$Weight.Power.Ratio <- dados$Minimal.empty.weight..kg. / dados$Engine.power..KM.  # Relação entre Peso e Potência do Motor
-dados$Battery.Range.Ratio <- dados$Battery.capacity..kWh. / dados$Range..WLTP...km.    # Relação entre Capacidade da Bateria e Alcance
+str(dados)
 
 
-## Seleção de Variáveis
+# Extrai o leaderboard (dataframe com os modelos criados)
+leaderboard_automl2 <- as.data.frame(modelo_automl2@leaderboard)
+head(leaderboard_automl)
+View(leaderboard_automl)
+
+# Extrai o líder (modelo com melhor performance)
+lider_automl2 <- modelo_automl2@leader
+print(lider_automl)
+View(lider_automl)
+
+## Carregar o modelo a partir do diretório
+modelo_automl_versao4 <- h2o.loadModel("modelos/versao4_modelo/GBM_grid_1_AutoML_1_20240202_151050_model_382")
+modelo2_automl_versao4 <- h2o.loadModel("modelos/versao4_modelo2/DeepLearning_grid_2_AutoML_2_20240202_153518_model_10")
+
+# Avaliação dos Modelos
+ava_modelo1 <- h2o.performance(modelo_automl_versao4)
+ava_modelo1
+ava_modelo2 <- h2o.performance(modelo2_automl_versao4)
+ava_modelo2
+
+# Ava Modelo1
+# MSE:  0.731158
+# RMSE:  0.8550778
+# MAE:  0.4921442
+# RMSLE:  0.0397853
+# Mean Residual Deviance :  0.731158
+
+# Ava Modelo2
+# MSE:  4.06569
+# RMSE:  2.016356
+# MAE:  1.461436
+# RMSLE:  0.1026355
+# Mean Residual Deviance :  4.06569
 
 
-## Criar Modelos
+
+## Desliga o H2O
+h2o.shutdown()
+
+
+
+#### Versão 7 
+
+
+
+
+
+
+
+## FOCAR NA VERSÃO 3
+## UTILIZAR OUTROS MODELOS NA VERSÃO 7 (PEGAR EXEMPLO DE MODELO NO PROJETO CLASSIFIÇÃO)
+
+
+
+
+
+
+
+
+
+
+
+
+# Normalizando e revertendo uma coluna apenas
+# dados_1col <- dados %>% 
+#   select(Engine.power..KM.)
+# max_coluna <- max(dados_1col)
+# min_coluna <- min(dados_1col)
+# dados_1col_nor <- as.data.frame(scale(dados_1col, center = min_coluna, scale = max_coluna - min_coluna))
+# dados_1col_original <- dados_1col_nor * (max_coluna - min_coluna) + min_coluna
+
+
+# dados_nor <- dados %>%
+#   mutate_if(sapply(dados, is.numeric), scale)   # Utilizando dplyr
