@@ -17,8 +17,12 @@ library(ggplot2)        # gera gráficos
 library(shiny)          # intercace gráfica
 
 library(randomForest)   # carrega algoritimo de ML (randomForest)
-library(rpart)          # carrega algoritimo de ML (árvore de decisão)
 library(e1071)          # carrega algoritimo de ML (SVM)
+library(glmnet)         # carrega algoritimo de ML
+library(xgboost)        # carrega algoritimo de ML
+library(class)          # carrega algoritimo de ML
+library(rpart)          # carrega algoritimo de ML
+
 
 library(caret)          # cria confusion matrix
 
@@ -715,17 +719,168 @@ ava_modelo2
 h2o.shutdown()
 
 
+######  Escolhendo Melhor Algoritmo de Machine Learning
 
-#### Versão 7 
-
-
-
+# - Utilizando as configurações da versão 3 (sem a criação das novas variáveis)
 
 
+## Carregando dados
+dados <- data.frame(read_xlsx("dataset/FEV-data-Excel.xlsx"))
+dados <- dados[complete.cases(dados), ]
 
 
-## FOCAR NA VERSÃO 3
-## UTILIZAR OUTROS MODELOS NA VERSÃO 7 (PEGAR EXEMPLO DE MODELO NO PROJETO CLASSIFIÇÃO)
+## Engenharia de Atributos
+
+# Convertendo a variável variáveis chr para fator
+dados <- dados %>%  
+  mutate_if(is.character, factor) %>%
+  mutate(across(c(Number.of.seats, Number.of.doors), as.factor))
+
+# Normalização dos Dados (variáveis numéricas) (Exemplo 1 coluna ao final)
+numeric_columns <- sapply(dados, is.numeric)
+dados_nor <- dados %>%
+  mutate(across(where(is.numeric), ~ scale(., center = min(.), scale = max(.) - min(.))))
+rm(numeric_columns)
+
+# Reverter Normalização
+# dados_revertidos <- dados_nor %>%
+#   mutate(across(where(is.numeric), ~ (. * (max(dados[, cur_column()]) - min(dados[, cur_column()])) + min(dados[, cur_column()]))))
+
+## Selecionando variaveis
+dados_nor <- dados_nor %>% 
+  select(Make, Wheelbase..cm., Permissable.gross.weight..kg., 
+         Minimal.price..gross...PLN., Length..cm., Width..cm.,
+         mean...Energy.consumption..kWh.100.km.)
+str(dados_nor)
+
+
+#### Criando Modelos
+
+## Dividindo os dados em treino e teste
+set.seed(150)
+indices <- createDataPartition(dados_nor$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
+dados_treino <- dados_nor[indices, ]
+dados_teste <- dados_nor[-indices, ]
+rm(indices)
+
+## Preparação dos dados para kNN (conversão para matriz)
+dados_treino_knn <- data.matrix(dados_treino[,-7])
+dados_teste_knn <- data.matrix(dados_teste[,-7])
+
+## Preparação dos dados para Xgboost (conversão para matriz)
+dados_treino_xgb <- xgb.DMatrix(data = dados_treino_knn, label = dados_treino$mean...Energy.consumption..kWh.100.km.)
+dados_teste_xgb <- xgb.DMatrix(data = dados_teste_knn, label = dados_teste$mean...Energy.consumption..kWh.100.km.)
+
+# Função para avaliar os modelos
+avaliar_modelo <- function(model, model_type, dados_teste, verdadeiro = NULL) {
+  if (model_type %in% c("lm", "svm", "gbm", "tree", "rm")) {
+    previsoes <- predict(model, newdata = dados_teste[, -7])
+  } else if (model_type == "knn") {
+    previsoes <- model
+    if (is.factor(previsoes)) {
+      previsoes <- as.numeric(levels(previsoes))[previsoes]
+    }
+  } else if (model_type == "xgb") {
+    previsoes <- predict(model, newdata = dados_teste)
+    # Verifique se 'verdadeiro' não é nulo e use-o para as métricas
+    if (!is.null(verdadeiro)) {
+      rmse <- sqrt(mean((previsoes - verdadeiro)^2))
+      mae <- mean(abs(previsoes - verdadeiro))
+      r2 <- 1 - sum((verdadeiro - previsoes)^2) / sum((verdadeiro - mean(verdadeiro))^2)
+      return(c(RMSE = rmse, MAE = mae, `R-squared` = r2))
+    }
+  } else {
+    previsoes <- predict(model, newdata = dados_teste[, -7])
+  }
+  
+  # Calculando as métricas de avaliação para outros modelos
+  if (model_type != "xgb") {
+    verdadeiro <- dados_teste[["mean...Energy.consumption..kWh.100.km."]]
+    rmse <- sqrt(mean((previsoes - verdadeiro)^2))
+    mae <- mean(abs(previsoes - verdadeiro))
+    r2 <- cor(previsoes, verdadeiro)^2
+    return(c(RMSE = rmse, MAE = mae, `R-squared` = r2))
+  }
+}
+
+
+## Salvando avaliação dos modelos em uma List()
+modelos_params <- list()
+
+str(dados_treino)
+
+## RandomForest
+model_rf <- randomForest(mean...Energy.consumption..kWh.100.km. ~
+                           Make + Wheelbase..cm. + Permissable.gross.weight..kg. + 
+                           Minimal.price..gross...PLN. + Length..cm. + Width..cm.,
+                        data = dados_treino, 
+                        ntree = 100, nodesize = 10, importance = TRUE, set.seed(100))
+
+avaliacao_rf <- avaliar_modelo(model_rf, "rm", dados_teste)
+print(avaliacao_rf)
+
+
+
+## SVM
+model_svm <- svm(mean...Energy.consumption..kWh.100.km. ~ ., data = dados_treino)
+avaliacao_svm <- avaliar_modelo(model_svm, "svm", dados_teste)
+print(avaliacao_svm)
+
+
+
+## kNN
+model_knn <- knn(train = dados_treino_knn, test = dados_teste_knn, cl = dados_treino$mean...Energy.consumption..kWh.100.km., k = 1)
+avaliacao_knn <- avaliar_modelo(model_knn, "knn", dados_teste)
+print(avaliacao_knn)
+
+
+
+## Árvore de Decisão
+model_tree <- rpart(mean...Energy.consumption..kWh.100.km. ~ ., data = dados_treino)
+avaliacao_tree <- avaliar_modelo(model_tree, "tree", dados_teste)
+print(avaliacao_tree)
+
+
+
+## Xgboost
+
+# Definindo os parâmetros do modelo XGBoost
+param <- list(
+  objective = "reg:squarederror",  # Problema de regressão
+  booster = "gbtree",             # Usar árvores como base
+  eta = 0.3,                       # Taxa de aprendizado
+  max_depth = 6,                   # Profundidade máxima da árvore
+  min_child_weight = 1,            # Peso mínimo por folha
+  subsample = 1,                  # Fração de amostras usadas para treinamento
+  colsample_bytree = 1,           # Fração de colunas usadas por árvore
+  nrounds = 100                    # Número de iterações (pode ser ajustado)
+)
+
+# Treinando o modelo XGBoost
+model_xgboost <- xgboost(data = dados_treino_xgb, params = param, nrounds = 100)
+
+# Chamando a função avaliar_modelo (precisa fornecer os rótulos verdadeiros)
+verdadeiro_xgb <- getinfo(dados_teste_xgb, "label")
+avaliacao_xgb <- avaliar_modelo(model_xgboost, "xgb", dados_teste_xgb, verdadeiro = verdadeiro_xgb)
+print(avaliacao_xgb)
+
+
+
+
+# Armazenando as avaliações em uma lista
+modelos_params <- list(
+  RandomForest = avaliacao_rf,
+  SVM = avaliacao_svm,
+  kNN = avaliacao_knn,
+  DecisionTree = avaliacao_tree,
+  XGBoost = avaliacao_xgb
+)
+
+# Exibindo as avaliações
+print(modelos_params)
+
+
+
 
 
 
