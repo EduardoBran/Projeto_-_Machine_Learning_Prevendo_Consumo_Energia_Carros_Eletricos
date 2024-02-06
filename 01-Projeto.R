@@ -12,6 +12,7 @@ getwd()
 library(readxl)         # carregar arquivos 
 
 library(dplyr)          # manipulação de dados
+library(corrplot)       # análise de correlação
 
 library(ggplot2)        # gera gráficos
 library(shiny)          # intercace gráfica
@@ -84,7 +85,7 @@ summary(dados)
 ## Criando Modelo
 
 # Dividindo os dados em treino e teste
-set.seed(150)
+set.seed(100)
 indices <- createDataPartition(dados$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
 dados_treino <- dados[indices, ]
 dados_teste <- dados[-indices, ]
@@ -93,7 +94,7 @@ rm(indices)
 # Criando o modelo preditivo (RandomForest)
 modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ ., 
                        data = dados_treino, 
-                       ntree = 100, nodesize = 10, importance = TRUE, set.seed(100))
+                       ntree = 100, nodesize = 10, importance = TRUE)
 
 # Realizando previsões no conjunto de teste
 previsoes <- predict(modelo, newdata = dados_teste)
@@ -108,9 +109,9 @@ cat("MAE (Mean Absolute Error):", mae, "\n")
 rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.)^2) / sum((dados_teste$mean...Energy.consumption..kWh.100.km. - mean(dados_teste$mean...Energy.consumption..kWh.100.km.))^2)
 cat("R-squared:", rsquared, "\n")
 
-# RMSE (Root Mean Squared Error): 0.9157646
-# MAE (Mean Absolute Error)     : 0.7412
-# R-squared                     : 0.9424634 
+# RMSE (Root Mean Squared Error): 2.834756
+# MAE (Mean Absolute Error)     : 1.651678
+# R-squared                     : 0.4924905 
 
 rm(modelo)
 rm(previsoes)
@@ -182,7 +183,7 @@ names(dados)
 ## Criando Modelo
 
 # Dividindo os dados em treino e teste
-set.seed(150)
+set.seed(100)
 indices <- createDataPartition(dados$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
 dados_treino <- dados[indices, ]
 dados_teste <- dados[-indices, ]
@@ -193,7 +194,7 @@ modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~
                          Make + Battery.Range.Ratio + Wheelbase..cm. + Length..cm. + Engine.power..KM. +
                          Permissable.gross.weight..kg. + Maximum.speed..kph. + Minimal.empty.weight..kg. + Maximum.torque..Nm. + Drive.type, 
                        data = dados_treino, 
-                       ntree = 100, nodesize = 10, importance = TRUE, set.seed(100))
+                       ntree = 100, nodesize = 10, importance = TRUE)
 
 # Realizando previsões no conjunto de teste
 previsoes <- predict(modelo, newdata = dados_teste)
@@ -209,9 +210,9 @@ rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.
 cat("R-squared:", rsquared, "\n")
 
 # Modelo 1
-# RMSE (Root Mean Squared Error): 0.6272197 
-# MAE (Mean Absolute Error)     : 0.5990649 
-# R-squared                     : 0.9730092
+# RMSE (Root Mean Squared Error): 2.423406 
+# MAE (Mean Absolute Error)     : 1.419523 
+# R-squared                     : 0.6290929
 
 rm(modelo)
 rm(previsoes)
@@ -242,6 +243,7 @@ dados <- dados[complete.cases(dados), ]
 dados <- dados %>%  
   mutate_if(is.character, factor) %>%
   mutate(across(c(Number.of.seats, Number.of.doors), as.factor))
+str(dados)
 
 # Normalização dos Dados (variáveis numéricas) (Exemplo 1 coluna ao final)
 numeric_columns <- sapply(dados, is.numeric)
@@ -256,6 +258,7 @@ rm(numeric_columns)
 # Criando novas variáveis de relação
 dados_nor$Weight.Power.Ratio <- dados$Minimal.empty.weight..kg. / dados$Engine.power..KM.  # Relação entre Peso e Potência do Motor
 dados_nor$Battery.Range.Ratio <- dados$Battery.capacity..kWh. / dados$Range..WLTP...km.    # Relação entre Capacidade da Bateria e Alcance
+
 
 
 ## Seleção de Variáveis (Feature Selection)
@@ -287,17 +290,18 @@ rm(df_importancia)
 ## Criando Modelo
 
 # Dividindo os dados em treino e teste
-set.seed(150)
+set.seed(100)
 indices <- createDataPartition(dados_nor$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
 dados_treino <- dados_nor[indices, ]
 dados_teste <- dados_nor[-indices, ]
 rm(indices)
 
 # Criando o modelo preditivo (RandomForest)
-modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ Make + Wheelbase..cm.
-                       + Permissable.gross.weight..kg. + Minimal.price..gross...PLN. + Length..cm. + Width..cm.,
+modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ 
+                         Make + Wheelbase..cm. + Permissable.gross.weight..kg. + Length..cm. + Width..cm.,
                        data = dados_treino, 
-                       ntree = 100, nodesize = 10, importance = TRUE, set.seed(100))
+                       ntree = 100, nodesize = 10, importance = TRUE)
+
 
 # Realizando previsões no conjunto de teste
 previsoes <- predict(modelo, newdata = dados_teste)
@@ -313,9 +317,9 @@ rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.
 cat("R-squared:", rsquared, "\n")
 
 # Modelo 1
-# RMSE (Root Mean Squared Error): 0.03809704
-# MAE (Mean Absolute Error)     : 0.03421335
-# R-squared                     : 0.9792081
+# RMSE (Root Mean Squared Error): 0.1297298
+# MAE (Mean Absolute Error)     : 0.09038498
+# R-squared                     : 0.7780638
 
 rm(modelo)
 rm(previsoes)
@@ -435,7 +439,7 @@ rm(df_importancia)
 ## Criando Modelo
 
 # Dividindo os dados em treino e teste
-set.seed(150)
+set.seed(100)
 indices <- createDataPartition(dados_nor$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
 dados_treino <- dados_nor[indices, ]
 dados_teste <- dados_nor[-indices, ]
@@ -446,7 +450,7 @@ modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ Make + Wheelbase
                        + Permissable.gross.weight..kg. + Minimal.price..gross...PLN. + Length..cm. + Width..cm.
                        + Acceleration.0.100.kph..s._categoria,
                        data = dados_treino, 
-                       ntree = 100, nodesize = 10, importance = TRUE, set.seed(100))
+                       ntree = 100, nodesize = 10, importance = TRUE)
 
 # Realizando previsões no conjunto de teste
 previsoes <- predict(modelo, newdata = dados_teste)
@@ -462,9 +466,9 @@ rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.
 cat("R-squared:", rsquared, "\n")
 
 # Modelo 1
-# RMSE (Root Mean Squared Error): 0.04515118
-# MAE (Mean Absolute Error)     : 0.0414877
-# R-squared                     : 0.9707955
+# RMSE (Root Mean Squared Error): 0.1621181
+# MAE (Mean Absolute Error)     : 0.1058741
+# R-squared                     : 0.6534138
 
 rm(modelo)
 rm(previsoes)
@@ -511,7 +515,7 @@ dados_nor$Battery.Range.Ratio <- dados$Battery.capacity..kWh. / dados$Range..WLT
 ## Seleção de Variáveis (Feature Selection)
 modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ ., 
                        data = dados_nor, 
-                       ntree = 100, nodesize = 10, importance = T, set.seed(100))
+                       ntree = 100, nodesize = 10, importance = T)
 
 # Visualizando por números
 print(modelo$importance)
@@ -537,7 +541,7 @@ rm(df_importancia)
 ## Criando Modelo
 
 # Dividindo os dados em treino e teste
-set.seed(150)
+set.seed(100)
 indices <- createDataPartition(dados_nor$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
 dados_treino <- dados_nor[indices, ]
 dados_teste <- dados_nor[-indices, ]
@@ -554,7 +558,7 @@ dados_treino <- dados_treino[rep(seq_len(nrow(dados_treino)), each = 2), ]
 modelo <- randomForest(mean...Energy.consumption..kWh.100.km. ~ Make + Wheelbase..cm.
                        + Permissable.gross.weight..kg. + Minimal.price..gross...PLN. + Length..cm. + Width..cm.,
                        data = dados_treino, 
-                       ntree = 100, nodesize = 10, importance = TRUE, set.seed(100))
+                       ntree = 100, nodesize = 10, importance = TRUE)
 
 # Realizando previsões no conjunto de teste
 previsoes <- predict(modelo, newdata = dados_teste)
@@ -570,9 +574,9 @@ rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.
 cat("R-squared:", rsquared, "\n")
 
 # Modelo 1
-# RMSE (Root Mean Squared Error): 0.04066856
-# MAE (Mean Absolute Error)     : 0.03548824
-# R-squared                     : 0.9763065
+# RMSE (Root Mean Squared Error): 0.1583543
+# MAE (Mean Absolute Error)     : 0.1127164
+# R-squared                     : 0.6693197
 
 rm(modelo)
 rm(previsoes)
@@ -607,7 +611,7 @@ dados <- dados %>%
 
 
 # Cria novas variáveis categóricas a partir de varíaveis do tipo int
-colunas_numericas <- sapply(dados, is.numeric)                          # Lista de colunas que são numéricas
+colunas_numericas <- sapply(dados, is.numeric)                          
 
 # Função para criar variáveis fatoriais com 5 níveis
 criar_variaveis_fatoriais <- function(coluna_numerica) {
@@ -648,6 +652,29 @@ rm(nomes_novas_variaveis)
 rm(colunas_numericas)
 
 
+# Criando novas variáveis de relação
+dados$Weight.Power.Ratio <- dados$Minimal.empty.weight..kg. / dados$Engine.power..KM.  # Relação entre Peso e Potência do Motor
+dados$Battery.Range.Ratio <- dados$Battery.capacity..kWh. / dados$Range..WLTP...km.    # Relação entre Capacidade da Bateria e Alcance
+
+# Selecionando As Variáveis
+dados <- dados %>%
+  select(Make, 
+         Wheelbase..cm., 
+         Permissable.gross.weight..kg., 
+         Width..cm., 
+         Length..cm., 
+         Minimal.empty.weight..kg., 
+         Minimal.price..gross...PLN., 
+         Engine.power..KM., 
+         Drive.type,
+         Battery.Range.Ratio,
+         Maximum.torque..Nm.,
+         Battery.capacity..kWh.,
+         Acceleration.0.100.kph..s.,
+         mean...Energy.consumption..kWh.100.km.)
+str(dados)
+
+
 ## Automl
 
 # Inicializando o H2O (Framework de Machine Learning)
@@ -660,32 +687,46 @@ class(h2o_frame)
 # Split dos dados em treino e teste (cria duas listas)
 h2o_frame_split <- h2o.splitFrame(h2o_frame, ratios = 0.85)
 head(h2o_frame_split)
+h2o_frame_split
 
-modelo_automl <- h2o.automl(y = 'mean...Energy.consumption..kWh.100.km.',
+modelo_automl <- h2o.automl(y = 'mean...Energy.consumption..kWh.100.km.',        # Todas as variáveis
                             training_frame = h2o_frame_split[[1]],
                             nfolds = 5,
                             leaderboard_frame = h2o_frame_split[[2]],
                             max_runtime_secs = 60 * 15,
                             sort_metric = "mae")
-
-modelo_automl2 <- h2o.automl(y = 'mean...Energy.consumption..kWh.100.km.',
+ 
+modelo_automl2 <- h2o.automl(y = 'mean...Energy.consumption..kWh.100.km.',       # Todas as variáveis
                             training_frame = h2o_frame_split[[1]],
                             nfolds = 5,
                             leaderboard_frame = h2o_frame_split[[2]],
                             max_runtime_secs = 60 * 60,
                             sort_metric = "mae")
 
-
-str(dados)
-
+modelo_automl3 <- h2o.automl(y = 'mean...Energy.consumption..kWh.100.km.',       # Seleção de Variáveis sem adicionar novas do tipo factor
+                            training_frame = h2o_frame_split[[1]],               # Conjunto de dados de treinamento
+                            nfolds = 4,                                          # Número de folds para validação cruzada
+                            leaderboard_frame = h2o_frame_split[[2]],            # Conjunto de dados para a leaderboard
+                            max_runtime_secs = 60 * 100,                         # Tempo máximo de execução em segundos (2 minutos neste caso)
+                            include_algos = c('DRF', 'xgboost', 'GBM',           # Incluir apenas RandomForest (DRF em H2O)
+                                              'GLM', 'deeplearning'),
+                            sort_metric = "MSE")                                 # Utilizando MSE como métrica de avaliação
+?h2o.automl
+lsf.str("package:h2o")
 
 # Extrai o leaderboard (dataframe com os modelos criados)
-leaderboard_automl2 <- as.data.frame(modelo_automl2@leaderboard)
-head(leaderboard_automl)
-View(leaderboard_automl)
+leaderboard_automl3 <- as.data.frame(modelo_automl3@leaderboard)
+head(leaderboard_automl3, 3)
+View(leaderboard_automl3)
+
+h2o.performance(lider_automl3)
+# Supondo que `validacao` seja seu conjunto de validação/teste
+performance_lider_validacao <- h2o.performance(model = lider_automl3, newdata = h2o_frame_split[[2]])
+h2o.mse(performance_lider_validacao)
+performance_lider_validacao
 
 # Extrai o líder (modelo com melhor performance)
-lider_automl2 <- modelo_automl2@leader
+lider_automl3 <- modelo_automl3@leader
 print(lider_automl)
 View(lider_automl)
 
@@ -699,14 +740,14 @@ ava_modelo1
 ava_modelo2 <- h2o.performance(modelo2_automl_versao4)
 ava_modelo2
 
-# Ava Modelo1
+# Ava Modelo 1
 # MSE:  0.731158
 # RMSE:  0.8550778
 # MAE:  0.4921442
 # RMSLE:  0.0397853
 # Mean Residual Deviance :  0.731158
 
-# Ava Modelo2
+# Ava Modelo 2
 # MSE:  4.06569
 # RMSE:  2.016356
 # MAE:  1.461436
@@ -719,7 +760,10 @@ ava_modelo2
 h2o.shutdown()
 
 
-######  Escolhendo Melhor Algoritmo de Machine Learning
+
+
+
+#################    Escolhendo Melhor Algoritmo de Machine Learning    #################    
 
 # - Utilizando as configurações da versão 3 (sem a criação das novas variáveis)
 
@@ -746,22 +790,25 @@ rm(numeric_columns)
 # dados_revertidos <- dados_nor %>%
 #   mutate(across(where(is.numeric), ~ (. * (max(dados[, cur_column()]) - min(dados[, cur_column()])) + min(dados[, cur_column()]))))
 
-## Selecionando variaveis
+## Selecionando variaveis Mais Relevantes (será foi no loop for)
 dados_nor <- dados_nor %>% 
   select(Make, Wheelbase..cm., Permissable.gross.weight..kg., 
          Minimal.price..gross...PLN., Length..cm., Width..cm.,
          mean...Energy.consumption..kWh.100.km.)
 str(dados_nor)
+names(dados_nor)
+
 
 
 #### Criando Modelos
 
 ## Dividindo os dados em treino e teste
-set.seed(150)
+set.seed(100)
 indices <- createDataPartition(dados_nor$mean...Energy.consumption..kWh.100.km., p = 0.80, list = FALSE)
 dados_treino <- dados_nor[indices, ]
 dados_teste <- dados_nor[-indices, ]
 rm(indices)
+names(dados_treino)
 
 ## Preparação dos dados para kNN (conversão para matriz)
 dados_treino_knn <- data.matrix(dados_treino[,-7])
@@ -807,14 +854,54 @@ avaliar_modelo <- function(model, model_type, dados_teste, verdadeiro = NULL) {
 ## Salvando avaliação dos modelos em uma List()
 modelos_params <- list()
 
-str(dados_treino)
+
+## Criando Loop Para Escolha da Melhor Combinação de Variáveis (modificar código do modelo dentro do loop, no momento modelo SVM)
+resultados <- data.frame(combinacao = character(), RMSE = numeric(), MAE = numeric(), R_squared = numeric(), stringsAsFactors = FALSE)
+
+# Lista de todas as variáveis preditoras possíveis
+variaveis <- c("Make", "Wheelbase..cm.", "Permissable.gross.weight..kg.", "Minimal.price..gross...PLN.", "Length..cm.", "Width..cm.")
+# Criar todas as combinações possíveis das variáveis preditoras
+combinacoes <- unlist(lapply(1:length(variaveis), function(n) combn(variaveis, n, simplify = FALSE)), recursive = FALSE)
+
+# Loop através de cada combinação de variáveis
+for(i in seq_along(combinacoes)) {
+  # Criar a fórmula para o modelo atual
+  formula_atual <- as.formula(paste("mean...Energy.consumption..kWh.100.km. ~", paste(combinacoes[[i]], collapse = " + ")))
+  
+  # Ajustar o modelo randomForest
+  # modelo <- randomForest(formula_atual, data = dados_treino, ntree = 100, nodesize = 10, importance = TRUE)
+  modelo <- svm(formula_atual, data = dados_treino)
+  
+  # Realizar previsões no conjunto de teste
+  previsoes <- predict(modelo, newdata = dados_teste)
+  
+  # Avaliar o desempenho do modelo
+  rmse_atual <- sqrt(mean((previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.)^2))
+  mae_atual <- mean(abs(previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.))
+  rsquared_atual <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.)^2) / sum((dados_teste$mean...Energy.consumption..kWh.100.km. - mean(dados_teste$mean...Energy.consumption..kWh.100.km.))^2)
+  
+  # Adicionar os resultados ao dataframe
+  resultados <- rbind(resultados, data.frame(combinacao = paste(combinacoes[[i]], collapse = " + "), RMSE = rmse_atual, MAE = mae_atual, R_squared = rsquared_atual))
+}
+
+# Ordenar os resultados por RMSE, MAE ou R-squared conforme desejado
+resultados_ordenados <- resultados[order(resultados$RMSE), ]
+head(resultados_ordenados$combinacao, 4)
+rm(resultados)
+rm(variaveis)
+rm(combinacoes)
+rm(i)
+rm(rmse_atual)
+rm(mae_atual)
+rm(rsquared_atual)
+
+
 
 ## RandomForest
 model_rf <- randomForest(mean...Energy.consumption..kWh.100.km. ~
-                           Make + Wheelbase..cm. + Permissable.gross.weight..kg. + 
-                           Minimal.price..gross...PLN. + Length..cm. + Width..cm.,
-                        data = dados_treino, 
-                        ntree = 100, nodesize = 10, importance = TRUE, set.seed(100))
+                           Make + Wheelbase..cm. + Permissable.gross.weight..kg. + Width..cm.,
+                         data = dados_treino, 
+                         ntree = 100, nodesize = 10, importance = TRUE)
 
 avaliacao_rf <- avaliar_modelo(model_rf, "rm", dados_teste)
 print(avaliacao_rf)
@@ -822,7 +909,9 @@ print(avaliacao_rf)
 
 
 ## SVM
-model_svm <- svm(mean...Energy.consumption..kWh.100.km. ~ ., data = dados_treino)
+model_svm <- svm(mean...Energy.consumption..kWh.100.km. ~
+                   Make + Wheelbase..cm. + Permissable.gross.weight..kg. + Width..cm.,
+                 data = dados_treino)
 avaliacao_svm <- avaliar_modelo(model_svm, "svm", dados_teste)
 print(avaliacao_svm)
 
@@ -840,19 +929,19 @@ model_tree <- rpart(mean...Energy.consumption..kWh.100.km. ~ ., data = dados_tre
 avaliacao_tree <- avaliar_modelo(model_tree, "tree", dados_teste)
 print(avaliacao_tree)
 
-
+head(dados, 1)
 
 ## Xgboost
 
 # Definindo os parâmetros do modelo XGBoost
 param <- list(
   objective = "reg:squarederror",  # Problema de regressão
-  booster = "gbtree",             # Usar árvores como base
+  booster = "gbtree",              # Usar árvores como base
   eta = 0.3,                       # Taxa de aprendizado
   max_depth = 6,                   # Profundidade máxima da árvore
   min_child_weight = 1,            # Peso mínimo por folha
-  subsample = 1,                  # Fração de amostras usadas para treinamento
-  colsample_bytree = 1,           # Fração de colunas usadas por árvore
+  subsample = 1,                   # Fração de amostras usadas para treinamento
+  colsample_bytree = 1,            # Fração de colunas usadas por árvore
   nrounds = 100                    # Número de iterações (pode ser ajustado)
 )
 
@@ -863,8 +952,6 @@ model_xgboost <- xgboost(data = dados_treino_xgb, params = param, nrounds = 100)
 verdadeiro_xgb <- getinfo(dados_teste_xgb, "label")
 avaliacao_xgb <- avaliar_modelo(model_xgboost, "xgb", dados_teste_xgb, verdadeiro = verdadeiro_xgb)
 print(avaliacao_xgb)
-
-
 
 
 # Armazenando as avaliações em uma lista
@@ -882,7 +969,97 @@ print(modelos_params)
 
 
 
+#### -> Melhor Modelo: SVM
 
+
+
+#   - Qual a melhor versão de preparação dos dados?
+#   - Qual o modelo apresentou o melhor resultado?
+#   - O Modelo responde a pergunta de negocio?
+#   - O projeto foi bem executado no geral?
+
+
+
+
+
+############  INTERFACE GRÁFICA  ############
+
+# Carregando o modelo treinado previamente
+model_svm <- readRDS("modelos/versao3/model_svm2.rds")
+marcas_unicas <- c("Audi", "BMW", "DS", "Honda", "Hyundai", "Jaguar", "Kia", "Mazda", "Mercedes-Benz", "Mini", "Nissan", "Opel",
+                   "Peugeot", "Porsche", "Renault", "Skoda", "Smart", "Volkswagen", "Citroën")
+
+ui <- fluidPage(
+  titlePanel("Previsão de Consumo de Energia"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("make", "Make", choices = unique(marcas_unicas)),
+      numericInput("wheelbase", "Wheelbase (cm)", value = 292.8), # Exemplo de valor inicial
+      numericInput("permissableweight", "Permissable Gross Weight (kg)", value = 3130), # Exemplo de valor inicial
+      numericInput("width", "Width (cm)", value = 193.5), # Exemplo de valor inicial
+      actionButton("exibir", "Exibir") # Incluindo o ID do botão
+    ),
+    mainPanel(
+      textOutput("resultado")
+    )
+  )
+)
+
+
+# Server
+server <- function(input, output) {
+  observeEvent(input$exibir, {
+    dados_usuario <- tibble(
+      Make = factor(input$make, levels = unique(dados$Make)),
+      Wheelbase..cm. = as.numeric(input$wheelbase),
+      Permissable.gross.weight..kg. = as.numeric(input$permissableweight),
+      Width..cm. = as.numeric(input$width)
+    )
+    
+    # Corrigindo a aplicação da normalização com os valores corretos de 'center' e 'scale'
+    dados_usuario$Wheelbase..cm. <- scale(dados_usuario$Wheelbase..cm., center = 187.3, scale = 327.5 - 187.3)
+    dados_usuario$Permissable.gross.weight..kg. <- scale(dados_usuario$Permissable.gross.weight..kg., center = 1310, scale = 3130 - 1310)
+    dados_usuario$Width..cm. <- scale(dados_usuario$Width..cm., center = 164.5, scale = 255.8 - 164.5)
+    
+    # Assegurando que 'dados_usuario' seja um data.frame ou matriz antes da previsão
+    # dados_usuario <- as.data.frame(sapply(dados_usuario, as.numeric))
+    
+    # Realizando a previsão com os dados corretamente normalizados
+    previsao <- predict(model_svm, newdata = dados_usuario)
+    
+    # Revertendo a normalização da variável alvo corretamente
+    previsao_revertida <- previsao * (27.55 - 13.1) + 13.1
+    
+    # Exibindo o resultado corrigido
+    output$resultado <- renderText({
+      paste("Previsão de Consumo de Energia (kWh/100km):", round(previsao_revertida, 2))
+    })
+  })
+}
+
+
+# Rodando o aplicativo Shiny
+shinyApp(ui = ui, server = server)
+
+
+
+
+
+
+
+max(dados$Wheelbase..cm.)  # 327.5
+min(dados$Wheelbase..cm.)  # 187.3
+max(dados$Permissable.gross.weight..kg.)  # 3130
+min(dados$Permissable.gross.weight..kg.)  # 1310
+max(dados$Width..cm.)      # 255.8
+min(dados$Width..cm.)      # 164.5
+
+
+max(dados$mean...Energy.consumption..kWh.100.km.) # 27.55
+min(dados$mean...Energy.consumption..kWh.100.km.) # 13.1
+
+
+head(dados$mean...Energy.consumption..kWh.100.km., 1)
 
 
 
@@ -896,9 +1073,12 @@ print(modelos_params)
 # Normalizando e revertendo uma coluna apenas
 # dados_1col <- dados %>% 
 #   select(Engine.power..KM.)
+
 # max_coluna <- max(dados_1col)
+
 # min_coluna <- min(dados_1col)
 # dados_1col_nor <- as.data.frame(scale(dados_1col, center = min_coluna, scale = max_coluna - min_coluna))
+
 # dados_1col_original <- dados_1col_nor * (max_coluna - min_coluna) + min_coluna
 
 
