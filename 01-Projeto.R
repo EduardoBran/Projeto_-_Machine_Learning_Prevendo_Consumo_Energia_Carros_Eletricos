@@ -34,13 +34,13 @@ library(h2o)            # framework para construir modelos de machine learning
 #  -> Seu trabalho é construir um modelo de Machine Learning capaz de prever o consumo de energia de veículos elétricos.
 
 
-## Carregando dados
 
+## Carregando dados
 dados <- data.frame(read_xlsx("dataset/FEV-data-Excel.xlsx"))
 
 # Verificando e removendo valores ausentes
-colSums(is.na(dados))
 dados <- dados[complete.cases(dados), ]
+colSums(is.na(dados))
 
 dim(dados)
 str(dados)
@@ -177,8 +177,6 @@ rm(modelo)
 rm(importancia_ordenada)
 rm(df_importancia)
 
-names(dados)
-
 
 ## Criando Modelo
 
@@ -209,7 +207,7 @@ cat("MAE (Mean Absolute Error):", mae, "\n")
 rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.)^2) / sum((dados_teste$mean...Energy.consumption..kWh.100.km. - mean(dados_teste$mean...Energy.consumption..kWh.100.km.))^2)
 cat("R-squared:", rsquared, "\n")
 
-# Modelo 1
+# Modelo 
 # RMSE (Root Mean Squared Error): 2.423406 
 # MAE (Mean Absolute Error)     : 1.419523 
 # R-squared                     : 0.6290929
@@ -465,7 +463,7 @@ cat("MAE (Mean Absolute Error):", mae, "\n")
 rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.)^2) / sum((dados_teste$mean...Energy.consumption..kWh.100.km. - mean(dados_teste$mean...Energy.consumption..kWh.100.km.))^2)
 cat("R-squared:", rsquared, "\n")
 
-# Modelo 1
+# Modelo
 # RMSE (Root Mean Squared Error): 0.1621181
 # MAE (Mean Absolute Error)     : 0.1058741
 # R-squared                     : 0.6534138
@@ -546,7 +544,6 @@ indices <- createDataPartition(dados_nor$mean...Energy.consumption..kWh.100.km.,
 dados_treino <- dados_nor[indices, ]
 dados_teste <- dados_nor[-indices, ]
 rm(indices)
-str(dados_treino)
 
 # Duplicação de Linhas (dados_treino)
 dados_treino <- dados_treino[rep(seq_len(nrow(dados_treino)), each = 2), ]
@@ -573,7 +570,7 @@ cat("MAE (Mean Absolute Error):", mae, "\n")
 rsquared <- 1 - sum((previsoes - dados_teste$mean...Energy.consumption..kWh.100.km.)^2) / sum((dados_teste$mean...Energy.consumption..kWh.100.km. - mean(dados_teste$mean...Energy.consumption..kWh.100.km.))^2)
 cat("R-squared:", rsquared, "\n")
 
-# Modelo 1
+# Modelo
 # RMSE (Root Mean Squared Error): 0.1583543
 # MAE (Mean Absolute Error)     : 0.1127164
 # R-squared                     : 0.6693197
@@ -598,7 +595,7 @@ dados <- dados[complete.cases(dados), ]
 # - Modifica as variáveis numéricas Number.of.seats e Number.of.doors em factor
 # - Cria novas variáveis categóricas a partir de varíaveis do tipo int
 # - Cria duas novas variáveis de relação
-# - Utilizando AutoML
+# - Utilizando AutoML para criação de 3 modelos
 
 
 ## Engenharia de Atributos
@@ -707,53 +704,54 @@ modelo_automl3 <- h2o.automl(y = 'mean...Energy.consumption..kWh.100.km.',      
                             training_frame = h2o_frame_split[[1]],               # Conjunto de dados de treinamento
                             nfolds = 4,                                          # Número de folds para validação cruzada
                             leaderboard_frame = h2o_frame_split[[2]],            # Conjunto de dados para a leaderboard
-                            max_runtime_secs = 60 * 100,                         # Tempo máximo de execução em segundos (2 minutos neste caso)
+                            max_runtime_secs = 60 * 160,                         # Tempo máximo de execução em segundos (2 minutos neste caso)
                             include_algos = c('DRF', 'xgboost', 'GBM',           # Incluir apenas RandomForest (DRF em H2O)
                                               'GLM', 'deeplearning'),
                             sort_metric = "MSE")                                 # Utilizando MSE como métrica de avaliação
 ?h2o.automl
-lsf.str("package:h2o")
+
 
 # Extrai o leaderboard (dataframe com os modelos criados)
 leaderboard_automl3 <- as.data.frame(modelo_automl3@leaderboard)
 head(leaderboard_automl3, 3)
 View(leaderboard_automl3)
 
-h2o.performance(lider_automl3)
-# Supondo que `validacao` seja seu conjunto de validação/teste
-performance_lider_validacao <- h2o.performance(model = lider_automl3, newdata = h2o_frame_split[[2]])
-h2o.mse(performance_lider_validacao)
-performance_lider_validacao
-
 # Extrai o líder (modelo com melhor performance)
 lider_automl3 <- modelo_automl3@leader
-print(lider_automl)
-View(lider_automl)
+print(lider_automl3)
+View(lider_automl3)
 
-## Carregar o modelo a partir do diretório
-modelo_automl_versao4 <- h2o.loadModel("modelos/versao4_modelo/GBM_grid_1_AutoML_1_20240202_151050_model_382")
-modelo2_automl_versao4 <- h2o.loadModel("modelos/versao4_modelo2/DeepLearning_grid_2_AutoML_2_20240202_153518_model_10")
+# h2o.performance(model = lider_automl3, newdata = h2o_frame_split[[2]])
 
 # Avaliação dos Modelos
-ava_modelo1 <- h2o.performance(modelo_automl_versao4)
-ava_modelo1
-ava_modelo2 <- h2o.performance(modelo2_automl_versao4)
-ava_modelo2
+h2o.performance(lider_automl, newdata = h2o_frame_split[[2]])
+h2o.performance(lider_automl2, newdata = h2o_frame_split[[2]])
+h2o.performance(lider_automl3, newdata = h2o_frame_split[[2]])
 
-# Ava Modelo 1
-# MSE:  0.731158
-# RMSE:  0.8550778
-# MAE:  0.4921442
+# Avaliação Modelo AutoMl 1
+# MSE  :  0.731158
+# RMSE :  0.8550778
+# MAE  :  0.4921442
 # RMSLE:  0.0397853
 # Mean Residual Deviance :  0.731158
 
-# Ava Modelo 2
-# MSE:  4.06569
-# RMSE:  2.016356
-# MAE:  1.461436
+# Avaliação Modelo AutoMl 2
+# MSE  :  4.06569
+# RMSE :  2.016356
+# MAE  :  1.461436
 # RMSLE:  0.1026355
 # Mean Residual Deviance :  4.06569
 
+# Avaliação Modelo AutoMl 3 (gbm)
+# MSE  :  1.304679
+# RMSE :  1.142226
+# MAE  :  0.9017159
+# RMSLE:  0.0688413
+# Mean Residual Deviance :  1.304679
+
+
+## Carregar o modelo a partir do diretório
+# modelo_automl_versao4 <- h2o.loadModel("modelos/versao4_modelo/GBM_grid_1_AutoML_1_20240202_151050_model_382")
 
 
 ## Desliga o H2O
@@ -810,6 +808,7 @@ dados_teste <- dados_nor[-indices, ]
 rm(indices)
 names(dados_treino)
 
+
 ## Preparação dos dados para kNN (conversão para matriz)
 dados_treino_knn <- data.matrix(dados_treino[,-7])
 dados_teste_knn <- data.matrix(dados_teste[,-7])
@@ -818,7 +817,8 @@ dados_teste_knn <- data.matrix(dados_teste[,-7])
 dados_treino_xgb <- xgb.DMatrix(data = dados_treino_knn, label = dados_treino$mean...Energy.consumption..kWh.100.km.)
 dados_teste_xgb <- xgb.DMatrix(data = dados_teste_knn, label = dados_teste$mean...Energy.consumption..kWh.100.km.)
 
-# Função para avaliar os modelos
+
+## Função para avaliar os modelos
 avaliar_modelo <- function(model, model_type, dados_teste, verdadeiro = NULL) {
   if (model_type %in% c("lm", "svm", "gbm", "tree", "rm")) {
     previsoes <- predict(model, newdata = dados_teste[, -7])
@@ -851,15 +851,12 @@ avaliar_modelo <- function(model, model_type, dados_teste, verdadeiro = NULL) {
 }
 
 
-## Salvando avaliação dos modelos em uma List()
-modelos_params <- list()
-
-
-## Criando Loop Para Escolha da Melhor Combinação de Variáveis (modificar código do modelo dentro do loop, no momento modelo SVM)
+## Loop Para Escolha da Melhor Combinação de Variáveis (modificar código do modelo dentro do loop, no momento modelo SVM)
 resultados <- data.frame(combinacao = character(), RMSE = numeric(), MAE = numeric(), R_squared = numeric(), stringsAsFactors = FALSE)
 
 # Lista de todas as variáveis preditoras possíveis
 variaveis <- c("Make", "Wheelbase..cm.", "Permissable.gross.weight..kg.", "Minimal.price..gross...PLN.", "Length..cm.", "Width..cm.")
+
 # Criar todas as combinações possíveis das variáveis preditoras
 combinacoes <- unlist(lapply(1:length(variaveis), function(n) combn(variaveis, n, simplify = FALSE)), recursive = FALSE)
 
@@ -868,9 +865,9 @@ for(i in seq_along(combinacoes)) {
   # Criar a fórmula para o modelo atual
   formula_atual <- as.formula(paste("mean...Energy.consumption..kWh.100.km. ~", paste(combinacoes[[i]], collapse = " + ")))
   
-  # Ajustar o modelo randomForest
-  # modelo <- randomForest(formula_atual, data = dados_treino, ntree = 100, nodesize = 10, importance = TRUE)
+  # Ajustar o tipo de modelo
   modelo <- svm(formula_atual, data = dados_treino)
+  # modelo <- randomForest(formula_atual, data = dados_treino, ntree = 100, nodesize = 10, importance = TRUE)
   
   # Realizar previsões no conjunto de teste
   previsoes <- predict(modelo, newdata = dados_teste)
@@ -894,6 +891,10 @@ rm(i)
 rm(rmse_atual)
 rm(mae_atual)
 rm(rsquared_atual)
+
+
+## Lista para avaliação dos modelos
+modelos_params <- list()
 
 
 
@@ -1040,6 +1041,12 @@ server <- function(input, output) {
 
 # Rodando o aplicativo Shiny
 shinyApp(ui = ui, server = server)
+
+
+
+
+
+
 
 
 
