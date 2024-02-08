@@ -5,6 +5,16 @@ setwd("~/Desktop/DataScience/CienciaDeDados/1.Big-Data-Analytics-com-R-e-Microso
 getwd()
 
 
+
+########################   Machine Learning em Logística Prevendo o Consumo de Energia de Carros Elétricos   ########################
+
+
+## Sobre o Script
+
+# - Este script contém a história e o contexto do projeto.
+
+
+
 ## Contexto:
 
 # - Uma empresa da área de transporte e logística deseja migrar sua frota para carros elétricos com o objetivo de reduzir os custos.
@@ -31,6 +41,7 @@ getwd()
 #   as informações eram complementadas com dados do AutoCatálogo SAMAR (link disponível na seção Referências da fonte de dados).
 
 #  <- https://data.mendeley.com/datasets/tb9yrptydn/2
+
 
 # Objetivo:
 

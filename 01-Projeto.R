@@ -5,11 +5,18 @@ setwd("~/Desktop/DataScience/CienciaDeDados/1.Big-Data-Analytics-com-R-e-Microso
 getwd()
 
 
-## Machine Learning em Logística Prevendo o Consumo de Energia de Carros Elétricos ##
+
+########################   Machine Learning em Logística Prevendo o Consumo de Energia de Carros Elétricos   ########################
+
+
+## Sobre o Script
+
+# - Este script contém o código com todas as versões de preparação e criação de modelos para conclusão do projeto
+
 
 
 ## Carregando Pacotes
-library(readxl)         # carregar arquivos 
+library(readxl)         # carregar arquivos
 
 library(dplyr)          # manipulação de dados
 library(corrplot)       # análise de correlação
@@ -763,7 +770,7 @@ h2o.shutdown()
 
 #################    Escolhendo Melhor Algoritmo de Machine Learning    #################    
 
-# - Utilizando as configurações da versão 3 (sem a criação das novas variáveis)
+# - Reescrevendo utilizando as configurações da versão 3 (sem a criação das novas variáveis)
 
 
 ## Carregando dados
@@ -788,13 +795,13 @@ rm(numeric_columns)
 # dados_revertidos <- dados_nor %>%
 #   mutate(across(where(is.numeric), ~ (. * (max(dados[, cur_column()]) - min(dados[, cur_column()])) + min(dados[, cur_column()]))))
 
-## Selecionando variaveis Mais Relevantes (será foi no loop for)
-dados_nor <- dados_nor %>% 
-  select(Make, Wheelbase..cm., Permissable.gross.weight..kg., 
-         Minimal.price..gross...PLN., Length..cm., Width..cm.,
-         mean...Energy.consumption..kWh.100.km.)
-str(dados_nor)
-names(dados_nor)
+## Selecionando variaveis Mais Relevantes (será feita no loop for)
+# dados_nor <- dados_nor %>% 
+#   select(Make, Wheelbase..cm., Permissable.gross.weight..kg., 
+#          Minimal.price..gross...PLN., Length..cm., Width..cm.,
+#          mean...Energy.consumption..kWh.100.km.)
+# str(dados_nor)
+# names(dados_nor)
 
 
 
@@ -883,14 +890,8 @@ for(i in seq_along(combinacoes)) {
 
 # Ordenar os resultados por RMSE, MAE ou R-squared conforme desejado
 resultados_ordenados <- resultados[order(resultados$RMSE), ]
-head(resultados_ordenados$combinacao, 4)
-rm(resultados)
-rm(variaveis)
-rm(combinacoes)
-rm(i)
-rm(rmse_atual)
-rm(mae_atual)
-rm(rsquared_atual)
+head(resultados_ordenados$combinacao)
+
 
 
 ## Lista para avaliação dos modelos
@@ -930,7 +931,7 @@ model_tree <- rpart(mean...Energy.consumption..kWh.100.km. ~ ., data = dados_tre
 avaliacao_tree <- avaliar_modelo(model_tree, "tree", dados_teste)
 print(avaliacao_tree)
 
-head(dados, 1)
+
 
 ## Xgboost
 
@@ -969,125 +970,12 @@ print(modelos_params)
 
 
 
-
-#### -> Melhor Modelo: SVM
-
-
-
-#   - Qual a melhor versão de preparação dos dados?
-#   - Qual o modelo apresentou o melhor resultado?
-#   - O Modelo responde a pergunta de negocio?
-#   - O projeto foi bem executado no geral?
+rm(resultados)
+rm(variaveis)
+rm(combinacoes)
+rm(i)
+rm(rmse_atual)
+rm(mae_atual)
+rm(rsquared_atual)
 
 
-
-
-
-############  INTERFACE GRÁFICA  ############
-
-# Carregando o modelo treinado previamente
-model_svm <- readRDS("modelos/versao3/model_svm2.rds")
-marcas_unicas <- c("Audi", "BMW", "DS", "Honda", "Hyundai", "Jaguar", "Kia", "Mazda", "Mercedes-Benz", "Mini", "Nissan", "Opel",
-                   "Peugeot", "Porsche", "Renault", "Skoda", "Smart", "Volkswagen", "Citroën")
-
-ui <- fluidPage(
-  titlePanel("Previsão de Consumo de Energia"),
-  sidebarLayout(
-    sidebarPanel(
-      selectInput("make", "Make", choices = unique(marcas_unicas)),
-      numericInput("wheelbase", "Wheelbase (cm)", value = 292.8), # Exemplo de valor inicial
-      numericInput("permissableweight", "Permissable Gross Weight (kg)", value = 3130), # Exemplo de valor inicial
-      numericInput("width", "Width (cm)", value = 193.5), # Exemplo de valor inicial
-      actionButton("exibir", "Exibir") # Incluindo o ID do botão
-    ),
-    mainPanel(
-      textOutput("resultado")
-    )
-  )
-)
-
-
-# Server
-server <- function(input, output) {
-  observeEvent(input$exibir, {
-    dados_usuario <- tibble(
-      Make = factor(input$make, levels = unique(dados$Make)),
-      Wheelbase..cm. = as.numeric(input$wheelbase),
-      Permissable.gross.weight..kg. = as.numeric(input$permissableweight),
-      Width..cm. = as.numeric(input$width)
-    )
-    
-    # Corrigindo a aplicação da normalização com os valores corretos de 'center' e 'scale'
-    dados_usuario$Wheelbase..cm. <- scale(dados_usuario$Wheelbase..cm., center = 187.3, scale = 327.5 - 187.3)
-    dados_usuario$Permissable.gross.weight..kg. <- scale(dados_usuario$Permissable.gross.weight..kg., center = 1310, scale = 3130 - 1310)
-    dados_usuario$Width..cm. <- scale(dados_usuario$Width..cm., center = 164.5, scale = 255.8 - 164.5)
-    
-    # Assegurando que 'dados_usuario' seja um data.frame ou matriz antes da previsão
-    # dados_usuario <- as.data.frame(sapply(dados_usuario, as.numeric))
-    
-    # Realizando a previsão com os dados corretamente normalizados
-    previsao <- predict(model_svm, newdata = dados_usuario)
-    
-    # Revertendo a normalização da variável alvo corretamente
-    previsao_revertida <- previsao * (27.55 - 13.1) + 13.1
-    
-    # Exibindo o resultado corrigido
-    output$resultado <- renderText({
-      paste("Previsão de Consumo de Energia (kWh/100km):", round(previsao_revertida, 2))
-    })
-  })
-}
-
-
-# Rodando o aplicativo Shiny
-shinyApp(ui = ui, server = server)
-
-
-
-
-
-
-
-
-
-
-
-
-
-max(dados$Wheelbase..cm.)  # 327.5
-min(dados$Wheelbase..cm.)  # 187.3
-max(dados$Permissable.gross.weight..kg.)  # 3130
-min(dados$Permissable.gross.weight..kg.)  # 1310
-max(dados$Width..cm.)      # 255.8
-min(dados$Width..cm.)      # 164.5
-
-
-max(dados$mean...Energy.consumption..kWh.100.km.) # 27.55
-min(dados$mean...Energy.consumption..kWh.100.km.) # 13.1
-
-
-head(dados$mean...Energy.consumption..kWh.100.km., 1)
-
-
-
-
-
-
-
-
-
-
-# Normalizando e revertendo uma coluna apenas
-# dados_1col <- dados %>% 
-#   select(Engine.power..KM.)
-
-# max_coluna <- max(dados_1col)
-
-# min_coluna <- min(dados_1col)
-# dados_1col_nor <- as.data.frame(scale(dados_1col, center = min_coluna, scale = max_coluna - min_coluna))
-
-# dados_1col_original <- dados_1col_nor * (max_coluna - min_coluna) + min_coluna
-
-
-# dados_nor <- dados %>%
-#   mutate_if(sapply(dados, is.numeric), scale)   # Utilizando dplyr
