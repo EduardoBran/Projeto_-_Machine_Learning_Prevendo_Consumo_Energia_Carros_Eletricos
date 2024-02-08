@@ -19,20 +19,20 @@
   - A exploração deste conjunto de dados desencadeou uma série de inovações e experimentações, evoluindo através de várias versões do modelo,
   cada uma aprimorando a abordagem anterior:
 
--> Versão 1: A jornada iniciou-se mantendo os tipos originais de dados e introduzindo duas novas variáveis, optando por um modelo RandomForest.
-             Este primeiro passo estabeleceu um marco inicial para comparações futuras.
+  -> Versão 1: A jornada iniciou-se mantendo os tipos originais de dados e introduzindo duas novas variáveis, optando por um modelo RandomForest.
+               Este primeiro passo estabeleceu um marco inicial para comparações futuras.
 
--> Versão 2: Melhorias foram realizadas com a conversão de variáveis categóricas em fatores e a implementação de seleção de recursos, melhorando
-             significativamente os indicadores de desempenho do modelo.
+  -> Versão 2: Melhorias foram realizadas com a conversão de variáveis categóricas em fatores e a implementação de seleção de recursos, melhorando
+               significativamente os indicadores de desempenho do modelo.
 
--> Versão 3: A normalização das variáveis numéricas e uma seleção de recursos ainda mais refinada marcaram um avanço na precisão do modelo,
-             pavimentando o caminho para insights mais profundos sobre o consumo dos EVs.
+  -> Versão 3: A normalização das variáveis numéricas e uma seleção de recursos ainda mais refinada marcaram um avanço na precisão do modelo,
+               pavimentando o caminho para insights mais profundos sobre o consumo dos EVs.
 
--> Versão 4 e 5: Estas versões trouxeram inovações na engenharia de atributos e técnicas de duplicação de linhas, respectivamente, cada uma
-                 visando ampliar a robustez do modelo.
+  -> Versão 4 e 5: Estas versões trouxeram inovações na engenharia de atributos e técnicas de duplicação de linhas, respectivamente, cada uma
+                   visando ampliar a robustez do modelo.
 
--> Versão 6 (AutoML): A exploração do AutoML ofereceu uma nova perspectiva sobre a seleção de modelos, embora não tenha superado as versões
-                      anteriores em termos de precisão.
+  -> Versão 6 (AutoML): A exploração do AutoML ofereceu uma nova perspectiva sobre a seleção de modelos, embora não tenha superado as versões
+                        anteriores em termos de precisão.
 
 
 ## Conclusão e Impacto
@@ -42,9 +42,9 @@
   em capturar a complexidade dos dados e fornecer previsões confiáveis.
 
 
-  ## Destaque da Conclusão
+## Destaque da Conclusão
 
-  - A capacidade de prever com precisão o consumo de energia dos veículos elétricos abre portas para uma gestão de frota mais eficiente e
+- A capacidade de prever com precisão o consumo de energia dos veículos elétricos abre portas para uma gestão de frota mais eficiente e
   sustentável. O projeto culminou na criação de uma interface gráfica, utilizando o framework Shiny no R, permitindo aos usuários visualizar e
   testar o modelo de previsão de forma interativa. Esta interface, uma inovação por si só, facilita a experimentação com diferentes configurações
   de veículos, oferecendo insights imediatos sobre o consumo de energia esperado.
